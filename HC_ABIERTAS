@@ -1,0 +1,150 @@
+import pandas as pd
+import tkinter as tk
+from tkinter import filedialog
+from datetime import datetime
+
+import openpyxl
+from openpyxl import styles
+from openpyxl.styles import Alignment
+from openpyxl.styles import Border, Side
+
+# Crear una ventana de tkinter para seleccionar el archivo de entrada
+root = tk.Tk()
+root.withdraw()  # Ocultar la ventana principal de tkinter
+
+# Solicitar al usuario que seleccione el archivo de entrada
+input_file_path = filedialog.askopenfilename(title="Selecciona el archivo de entrada",
+                                             filetypes=(("Archivos de Excel", "*.xlsx"), ("Todos los archivos", "*.*")))
+
+if not input_file_path:
+    print("No se seleccionó un archivo de entrada. Saliendo.")
+else:
+    # Cargar el archivo Excel
+    df = pd.read_excel(input_file_path)
+
+    # Convertir la columna 'FechaIngreso' a un formato de fecha
+    df['FechaIngreso'] = pd.to_datetime(df['FechaIngreso'], format='%d/%m/%Y %I:%M:%S %p')
+
+    # Crear dos DataFrames separados para médicos y enfermeras
+    df_medicos = df[df['CodEspecialidad'] == 382]
+    df_enfermeras = df[df['CodEspecialidad'] == 389]
+
+    # Filtrar las historias clínicas abiertas
+    df_medicos_abiertas = df_medicos[df_medicos['anulado'] == 0].copy()
+    df_enfermeras_abiertas = df_enfermeras[df_enfermeras['anulado'] == 0].copy()
+
+    # Crear columnas adicionales para el mes y el año
+    df_medicos_abiertas['Mes'] = df_medicos_abiertas['FechaIngreso'].dt.strftime('%Y-%m')
+    df_enfermeras_abiertas['Mes'] = df_enfermeras_abiertas['FechaIngreso'].dt.strftime('%Y-%m')
+
+    # Contar las historias clínicas abiertas para médicos y enfermeras por mes
+    num_historias_medicos = df_medicos_abiertas.groupby('NomPersonal')['Mes'].value_counts().unstack(fill_value=0)
+    num_historias_enfermeras = df_enfermeras_abiertas.groupby('NomPersonal')['Mes'].value_counts().unstack(fill_value=0)
+
+    # Agregar una columna con el total de historias clínicas abiertas de todos los meses
+    num_historias_medicos['Total'] = num_historias_medicos.sum(axis=1)
+    num_historias_enfermeras['Total'] = num_historias_enfermeras.sum(axis=1)
+
+    # Ordenar los resultados de mayor a menor por la columna 'Total'
+    num_historias_medicos = num_historias_medicos.sort_values(by='Total', ascending=False)
+    num_historias_enfermeras = num_historias_enfermeras.sort_values(by='Total', ascending=False)
+
+    # Calcular el total de cada mes
+    total_meses_medicos = num_historias_medicos.sum()
+    total_meses_enfermeras = num_historias_enfermeras.sum()
+
+    # Calcular el total general (suma de todos los meses)
+    total_general_medicos = total_meses_medicos.sum()
+    total_general_enfermeras = total_meses_enfermeras.sum()
+
+    # Agregar los totales de cada mes a la tabla
+    num_historias_medicos.loc['Total'] = total_meses_medicos
+    num_historias_enfermeras.loc['Total'] = total_meses_enfermeras
+
+    # Obtener el directorio del archivo de entrada
+    output_directory = filedialog.askdirectory(title="Selecciona el directorio de salida")
+
+    if output_directory:
+        # Guardar los resultados en archivos Excel en el mismo directorio de entrada
+        output_file_medicos = f"{output_directory}/historias_medicos.xlsx"
+        output_file_enfermeras = f"{output_directory}/historias_enfermeras.xlsx"
+
+        # Crear un escritor de Excel con openpyxl
+        writer_medicos = pd.ExcelWriter(output_file_medicos, engine='openpyxl')
+        writer_enfermeras = pd.ExcelWriter(output_file_enfermeras, engine='openpyxl')
+
+        # Agregar el DataFrame al archivo Excel
+        num_historias_medicos.to_excel(writer_medicos, sheet_name='Médicos', startrow=1)
+        num_historias_enfermeras.to_excel(writer_enfermeras, sheet_name='Enfermeras', startrow=1)
+
+        # Obtener las hojas de Excel
+        worksheet_medicos = writer_medicos.sheets['Médicos']
+        worksheet_enfermeras = writer_enfermeras.sheets['Enfermeras']
+
+        light_blue_fill = styles.PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
+
+        # Añadir formato a la hoja de cálculo (ajustar ancho de columnas y estilos)
+        for sheet in [worksheet_medicos, worksheet_enfermeras]:
+            for idx, column in enumerate(sheet.columns):
+                max_length = 0
+                column = [column[0]] + [str(cell) for cell in column[1:]]
+                for cell in column:
+                    try:
+                        if len(cell) > max_length:
+                            max_length = len(cell)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                sheet.column_dimensions[openpyxl.utils.get_column_letter(idx + 1)].width = adjusted_width
+
+            # Establecer estilos para encabezados y filas (encabezado en la fila 2)
+            for cell in sheet["2:2"]:
+                cell.font = styles.Font(bold=True)
+                cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
+
+            # Ajustar el ancho de la columna 'NomPersonal'
+            sheet.column_dimensions['A'].width = 45  # Ajustar el ancho de la columna 'NomPersonal'
+            for cell in sheet['A']:
+                cell.fill = light_blue_fill  # Usar el color personalizado en la columna A
+
+            # Alinear la columna A a la izquierda (sin incluir el encabezado)
+            for row in sheet.iter_rows(min_row=3, max_row=sheet.max_row, min_col=1, max_col=1):
+                for cell in row:
+                    cell.alignment = Alignment(horizontal="left")
+
+            # Ajustar el ancho de las columnas de meses
+            for col_letter in sheet.iter_cols(min_row=1, max_row=1, min_col=2):
+                max_length = max(len(str(cell.value)) for cell in col_letter)
+                adjusted_width = (max_length + 5)
+                sheet.column_dimensions[col_letter[0].column_letter].width = adjusted_width
+
+            # Crear bordes
+            border = Border(
+                left=Side(border_style='thin', color='000000'),
+                right=Side(border_style='thin', color='000000'),
+                top=Side(border_style='thin', color='000000'),
+                bottom=Side(border_style='thin', color='000000')
+            )
+
+            # Aplicar los bordes a toda la hoja
+            for row in sheet.iter_rows(min_row=2, min_col=1, max_row=sheet.max_row, max_col=sheet.max_column):
+                for cell in row:
+                    cell.border = border
+
+        # Crear hojas para los detalles de historias clínicas de médicos y enfermeras en el archivo correspondiente
+        for nombre, grupo in df_medicos_abiertas.groupby('NomPersonal'):
+            sheet_name = nombre[:31]  # Acortar el nombre si es demasiado largo
+            grupo.to_excel(writer_medicos, sheet_name=sheet_name, startrow=1, index=False)
+        for nombre, grupo in df_enfermeras_abiertas.groupby('NomPersonal'):
+            sheet_name = nombre[:31]  # Acortar el nombre si es demasiado largo
+            grupo.to_excel(writer_enfermeras, sheet_name=sheet_name, startrow=1, index=False)
+
+        # Guardar el archivo Excel
+        writer_medicos.close()
+        writer_enfermeras.close()
+
+        print(f"Resultados guardados en: {output_file_medicos} y {output_file_enfermeras}")
+    else:
+        print("No se seleccionó un directorio de salida. Los resultados no se guardarán.")
+
+root.mainloop()
