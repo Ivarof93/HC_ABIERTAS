@@ -135,9 +135,102 @@ else:
         for nombre, grupo in df_medicos_abiertas.groupby('NomPersonal'):
             sheet_name = nombre[:31]  # Acortar el nombre si es demasiado largo
             grupo.to_excel(writer_medicos, sheet_name=sheet_name, startrow=1, index=False)
+            worksheet_medicos = writer_medicos.sheets[sheet_name]
+
+            # Establecer estilos para las celdas de la hoja
+            for idx, column in enumerate(worksheet_medicos.columns):
+                max_length = 0
+                for cell in column[1:]:  # Excluir la fila 1
+                    try:
+                        if len(cell.value) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet_medicos.column_dimensions[openpyxl.utils.get_column_letter(idx + 1)].width = adjusted_width
+
+            # Establecer estilos para la fila 2
+            for cell in worksheet_medicos[2]:
+                cell.font = styles.Font(bold=True)
+                cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
+                cell.alignment = Alignment(horizontal="center")
+
+            # Aplicar bordes a la fila 2
+            for cell in worksheet_medicos[2]:
+                cell.border = border
+
+            # Establecer estilos para las celdas de la hoja "historias_enfermeras" excepto la fila 1
+            for idx, column in enumerate(worksheet_enfermeras.columns):
+                max_length = 0
+                for cell in column[1:]:  # Excluir la fila 1
+                    try:
+                        if len(cell.value) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet_enfermeras.column_dimensions[openpyxl.utils.get_column_letter(idx + 1)].width = adjusted_width
+
+            # Establecer estilos para la fila 2
+            for cell in worksheet_enfermeras[2]:
+                cell.font = styles.Font(bold=True)
+                cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
+                cell.alignment = Alignment(horizontal="center")
+
+            # Aplicar bordes a la fila 2
+            for cell in worksheet_enfermeras[2]:
+                cell.border = border
+
+        # Repite el mismo proceso para las hojas de detalles de enfermeras
         for nombre, grupo in df_enfermeras_abiertas.groupby('NomPersonal'):
             sheet_name = nombre[:31]  # Acortar el nombre si es demasiado largo
             grupo.to_excel(writer_enfermeras, sheet_name=sheet_name, startrow=1, index=False)
+            worksheet_enfermeras = writer_enfermeras.sheets[sheet_name]
+
+            # Establecer estilos para las celdas de la hoja "historias_medicos"
+            # Establecer estilos para las celdas de la hoja "historias_medicos" excepto la fila 1
+            for idx, column in enumerate(worksheet_medicos.columns):
+                max_length = 0
+                for cell in column[1:]:  # Excluir la fila 1
+                    try:
+                        if len(cell.value) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet_medicos.column_dimensions[openpyxl.utils.get_column_letter(idx + 1)].width = adjusted_width
+
+            # Establecer estilos para la fila 2
+            for cell in worksheet_medicos[2]:
+                cell.font = styles.Font(bold=True)
+                cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
+                cell.alignment = Alignment(horizontal="center")
+
+            # Aplicar bordes a la fila 2
+            for cell in worksheet_medicos[2]:
+                cell.border = border
+
+            # Establecer estilos para las celdas de la hoja "historias_enfermeras" excepto la fila 1
+            for idx, column in enumerate(worksheet_enfermeras.columns):
+                max_length = 0
+                for cell in column[1:]:  # Excluir la fila 1
+                    try:
+                        if len(cell.value) > max_length:
+                            max_length = len(cell.value)
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                worksheet_enfermeras.column_dimensions[openpyxl.utils.get_column_letter(idx + 1)].width = adjusted_width
+
+            # Establecer estilos para la fila 2
+            for cell in worksheet_enfermeras[2]:
+                cell.font = styles.Font(bold=True)
+                cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
+                cell.alignment = Alignment(horizontal="center")
+
+            # Aplicar bordes a la fila 2
+            for cell in worksheet_enfermeras[2]:
+                cell.border = border
 
         # Guardar el archivo Excel
         writer_medicos.close()
