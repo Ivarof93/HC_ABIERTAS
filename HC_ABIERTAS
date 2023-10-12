@@ -42,12 +42,12 @@ else:
     num_historias_enfermeras = df_enfermeras_abiertas.groupby('NomPersonal')['Mes'].value_counts().unstack(fill_value=0)
 
     # Agregar una columna con el total de historias clínicas abiertas de todos los meses
-    num_historias_medicos['Total'] = num_historias_medicos.sum(axis=1)
-    num_historias_enfermeras['Total'] = num_historias_enfermeras.sum(axis=1)
+    num_historias_medicos['TOTAL'] = num_historias_medicos.sum(axis=1)
+    num_historias_enfermeras['TOTAL'] = num_historias_enfermeras.sum(axis=1)
 
     # Ordenar los resultados de mayor a menor por la columna 'Total'
-    num_historias_medicos = num_historias_medicos.sort_values(by='Total', ascending=False)
-    num_historias_enfermeras = num_historias_enfermeras.sort_values(by='Total', ascending=False)
+    num_historias_medicos = num_historias_medicos.sort_values(by='TOTAL', ascending=False)
+    num_historias_enfermeras = num_historias_enfermeras.sort_values(by='TOTAL', ascending=False)
 
     # Calcular el total de cada mes
     total_meses_medicos = num_historias_medicos.sum()
@@ -58,8 +58,8 @@ else:
     total_general_enfermeras = total_meses_enfermeras.sum()
 
     # Agregar los totales de cada mes a la tabla
-    num_historias_medicos.loc['Total'] = total_meses_medicos
-    num_historias_enfermeras.loc['Total'] = total_meses_enfermeras
+    num_historias_medicos.loc['TOTAL'] = total_meses_medicos
+    num_historias_enfermeras.loc['TOTAL'] = total_meses_enfermeras
 
     # Obtener el directorio del archivo de entrada
     output_directory = filedialog.askdirectory(title="Selecciona el directorio de salida")
@@ -83,6 +83,7 @@ else:
 
         light_blue_fill = styles.PatternFill(start_color="ADD8E6", end_color="ADD8E6", fill_type="solid")
 
+# ===========================================================================================================================
         # Añadir formato a la hoja de cálculo (ajustar ancho de columnas y estilos)
         for sheet in [worksheet_medicos, worksheet_enfermeras]:
             for idx, column in enumerate(sheet.columns):
@@ -102,13 +103,16 @@ else:
                 cell.font = styles.Font(bold=True)
                 cell.fill = light_blue_fill  # Usar el color personalizado en el encabezado
 
-            # Ajustar el ancho de la columna 'NomPersonal'
-            sheet.column_dimensions['A'].width = 45  # Ajustar el ancho de la columna 'NomPersonal'
-            for cell in sheet['A']:
-                cell.fill = light_blue_fill  # Usar el color personalizado en la columna A
+            # Ajustar el ancho de la columna 'NomPersonal' (excepto la primera fila)
+            custom_column_width = 45  # Define el ancho personalizado que desees
+            for cell in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=1):
+                for cell in cell:
+                    cell.fill = light_blue_fill  # Usar el color personalizado en la columna A
+                    sheet.column_dimensions[cell.column_letter].width = custom_column_width
+                    cell.alignment = Alignment(horizontal="left")
 
             # Alinear la columna A a la izquierda (sin incluir el encabezado)
-            for row in sheet.iter_rows(min_row=3, max_row=sheet.max_row, min_col=1, max_col=1):
+            for row in sheet.iter_rows(min_row=3, max_row=sheet.max_row, min_col=2, max_col=1):
                 for cell in row:
                     cell.alignment = Alignment(horizontal="left")
 
@@ -130,6 +134,13 @@ else:
             for row in sheet.iter_rows(min_row=2, min_col=1, max_row=sheet.max_row, max_col=sheet.max_column):
                 for cell in row:
                     cell.border = border
+
+            # Aplicar negrita a la fila del Total (última fila)
+            for cell in sheet.iter_rows(min_row=sheet.max_row, max_row=sheet.max_row):
+                for cell in cell:
+                    cell.font = styles.Font(bold=True)
+
+#===========================================================================================================================
 
         # Crear hojas para los detalles de historias clínicas de médicos y enfermeras en el archivo correspondiente
         for nombre, grupo in df_medicos_abiertas.groupby('NomPersonal'):
@@ -180,6 +191,8 @@ else:
             # Aplicar bordes a la fila 2
             for cell in worksheet_enfermeras[2]:
                 cell.border = border
+
+# ===========================================================================================================================
 
         # Repite el mismo proceso para las hojas de detalles de enfermeras
         for nombre, grupo in df_enfermeras_abiertas.groupby('NomPersonal'):
