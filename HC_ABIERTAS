@@ -117,10 +117,11 @@ else:
                     cell.alignment = Alignment(horizontal="left")
 
             # Ajustar el ancho de las columnas de meses
-            for col_letter in sheet.iter_cols(min_row=1, max_row=1, min_col=2):
-                max_length = max(len(str(cell.value)) for cell in col_letter)
-                adjusted_width = (max_length + 5)
-                sheet.column_dimensions[col_letter[0].column_letter].width = adjusted_width
+            for col_letter in sheet.iter_cols(min_row=1, max_row=1):
+                if col_letter[0].column_letter != 'A':
+                    max_length = max(len(str(cell.value)) for cell in col_letter)
+                    adjusted_width = (max_length + 5)
+                    sheet.column_dimensions[col_letter[0].column_letter].width = adjusted_width
 
             # Crear bordes
             border = Border(
@@ -140,7 +141,17 @@ else:
                 for cell in cell:
                     cell.font = styles.Font(bold=True)
 
-#===========================================================================================================================
+            # Añadir título a la hoja de cálculo (en la fila 1, en las columnas de los meses y del total)
+            title = "Historias Clínicas Abiertas"
+            num_months = num_historias_medicos.shape[1] if sheet == worksheet_medicos else \
+            num_historias_enfermeras.shape[1]
+            sheet.merge_cells(start_row=1, start_column=2, end_row=1, end_column=num_months + 1)
+            sheet.cell(row=1, column=2, value=title).font = styles.Font(bold=True)
+            sheet['B1'].alignment = Alignment(horizontal="center")
+            sheet['B1'].fill = light_blue_fill  # Usar el color personalizado en el título
+
+
+        #===========================================================================================================================
 
         # Crear hojas para los detalles de historias clínicas de médicos y enfermeras en el archivo correspondiente
         for nombre, grupo in df_medicos_abiertas.groupby('NomPersonal'):
@@ -248,6 +259,7 @@ else:
         # Guardar el archivo Excel
         writer_medicos.close()
         writer_enfermeras.close()
+
 
         print(f"Resultados guardados en: {output_file_medicos} y {output_file_enfermeras}")
     else:
